@@ -32,7 +32,7 @@ public:
     std::string getName() const override
         {return name;}
 
-    std::string getValue() const override {
+    std::string getValue() const override { //значение возвращается в виде строки
         std::ostringstream oss;
         oss << value;
         return oss.str();
@@ -41,10 +41,11 @@ public:
     void reset() override
         {value = T();}
 
-    void setValue(T& val) 
+    void setValue(const T& val) 
         {value = val;}
 };
 
+// для сбора метрик
 class MetricCollector {
 private:
     std::map<std::string, std::unique_ptr<MetricBase>> metrics;
@@ -52,13 +53,13 @@ private:
 
 public:
     template<typename T>
-    void addMetric(std::string name) {
+    void addMetric(const std::string& name) {
         std::unique_lock<std::mutex> lock(mtx);
         metrics[name] = std::make_unique<SomeMetric<T>>(name);
     }
 
     template<typename T>
-    void addMetricValue(std::string name, T val) {
+    void addMetricValue(const std::string& name, const T& val) {
         std::unique_lock<std::mutex> lock(mtx);
         if (metrics.find(name) != metrics.end()) {
             if (auto* metric = dynamic_cast<SomeMetric<T>*>(metrics[name].get()))
@@ -66,10 +67,12 @@ public:
         }       
     }
 
+    //возвращает мапу с "название метрики" - "нынешнее значение"
     std::map<std::string, std::string> getMetrics();
     void resetMetrics();
 };
 
+//для записи метрик в файл
 class MetricWriter {
     MetricCollector& collector;
     std::string filename;
@@ -80,6 +83,7 @@ class MetricWriter {
     void writer();
 
 public:
+    //запускает поток, в котором каждую секунды выписывает метрики в файл, пока не выйдет за пределы видимости
     MetricWriter(MetricCollector& collector, const std::string& filename)
         : collector(collector), filename(filename), running(true) 
         {th = std::thread(&MetricWriter::writer, this);}

@@ -12,6 +12,10 @@ std::string MetricWriter::getCurrentTime() const {
 
 void MetricWriter::writer() {
     std::ofstream file(filename, std::ios::app);
+    if (!file.is_open()) {
+        std::cerr << "Не удалось открыть файл: " << filename << std::endl;
+        return;
+    }
     while (running) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         auto metrics = collector.getMetrics();
